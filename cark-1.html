@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>ÇARK — Ne İzlesem?</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:#12121a;color:#eee;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding-bottom:40px}
+header{padding:14px 12px 8px;text-align:center}
+h1{margin:0;font-size:20px;letter-spacing:4px;color:#ffd166}
+.tabs{display:flex;gap:6px;padding:8px 10px;position:sticky;top:0;background:#12121a;z-index:5}
+.tabs button{flex:1;padding:10px 4px;border:0;border-radius:10px;background:#1e1e2b;color:#aaa;font-size:13px;font-weight:600}
+.tabs button.on{background:#ffd166;color:#12121a}
+.page{display:none;padding:10px 12px}
+.page.on{display:block}
+.card{background:#1a1a26;border-radius:14px;padding:12px;margin-bottom:12px}
+label{display:block;font-size:12px;color:#8e8ea6;margin:8px 0 4px}
+input,select{width:100%;padding:11px;border-radius:10px;border:1px solid #2e2e40;background:#12121a;color:#eee;font-size:15px}
+.btn{display:block;width:100%;padding:13px;border:0;border-radius:12px;background:#ffd166;color:#12121a;font-size:16px;font-weight:700;margin-top:10px}
+.btn.alt{background:#2a2a3d;color:#ddd}
+.btn.red{background:#e05555;color:#fff}
+.btn:disabled{opacity:.4}
+.wheelwrap{position:relative;width:100%;max-width:340px;margin:6px auto 0}
+canvas{width:100%;display:block}
+.pin{position:absolute;top:-6px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:12px solid transparent;border-right:12px solid transparent;border-top:22px solid #ffd166;filter:drop-shadow(0 2px 3px #000);z-index:2}
+.row{display:flex;align-items:center;gap:8px;background:#1a1a26;border-radius:12px;padding:10px;margin-bottom:8px}
+.row .nm{flex:1;min-width:0}
+.row .nm b{display:block;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .nm span{font-size:12px;color:#8e8ea6}
+.mini{width:34px;height:34px;border:0;border-radius:9px;background:#2a2a3d;color:#eee;font-size:17px;font-weight:700;flex:none}
+.mini.x{background:#3a2020;color:#e88}
+.chip{display:inline-block;background:#26263a;border-radius:20px;padding:4px 10px;font-size:12px;margin:3px 3px 0 0}
+.bar{height:6px;background:#26263a;border-radius:4px;overflow:hidden;margin-top:5px}
+.bar i{display:block;height:100%;background:#ffd166}
+.muted{color:#8e8ea6;font-size:13px;text-align:center;padding:14px}
+h3{font-size:14px;color:#ffd166;margin:16px 0 8px;letter-spacing:1px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;padding:18px;z-index:20}
+.modal.on{display:flex}
+.box{background:#1a1a26;border-radius:18px;padding:20px;width:100%;max-width:360px;text-align:center}
+.box .big{font-size:22px;font-weight:800;color:#ffd166;margin:6px 0 2px;line-height:1.3}
+.chkrow{display:flex;align-items:center;gap:10px;padding:9px;border-radius:10px;background:#1a1a26;margin-bottom:6px}
+.chkrow input{width:20px;height:20px;flex:none}
+.chkrow label{margin:0;color:#eee;font-size:14px;flex:1}
+</style>
+</head>
+<body>
+
+<header><h1>Ç A R K</h1></header>
+
+<div class="tabs">
+  <button id="t0" class="on" onclick="tab(0)">Çark</button>
+  <button id="t1" onclick="tab(1)">Yapımlar</button>
+  <button id="t2" onclick="tab(2)">Özel Çarklar</button>
+</div>
+
+<!-- ÇARK -->
+<div class="page on" id="p0">
+  <div class="card">
+    <label>Aktif çark</label>
+    <select id="carkSec" onchange="carkDegis()"></select>
+  </div>
+  <div class="wheelwrap"><div class="pin"></div><canvas id="cv"></canvas></div>
+  <button class="btn" id="spinBtn" onclick="cevir()">ÇEVİR</button>
+  <div id="gecersizKutu"></div>
+  <h3>ŞANSLAR</h3>
+  <div id="sans"></div>
+</div>
+
+<!-- YAPIMLAR -->
+<div class="page" id="p1">
+  <div class="card">
+    <label>Yapım adı</label>
+    <input id="yAd" placeholder="örn. Vinland Saga">
+    <label>Kalan bölüm</label>
+    <input id="yBol" type="number" min="1" value="12">
+    <label>Çarpan (1 = normal, 2 = iki kat şans)</label>
+    <input id="yCarp" type="number" min="0.1" step="0.5" value="1">
+    <button class="btn" onclick="ekle()">EKLE</button>
+  </div>
+  <div id="liste"></div>
+  <h3>BİTENLER</h3>
+  <div id="bitenler"></div>
+  <h3>YEDEK</h3>
+  <div class="card">
+    <button class="btn alt" onclick="yedekAl()">Yedek indir (.json)</button>
+    <button class="btn alt" onclick="document.getElementById('fy').click()">Yedek yükle</button>
+    <input type="file" id="fy" accept=".json" style="display:none" onchange="yedekYukle(this)">
+  </div>
+</div>
+
+<!-- ÖZEL ÇARKLAR -->
+<div class="page" id="p2">
+  <div class="card">
+    <label>Yeni çark adı</label>
+    <input id="cAd" placeholder="örn. Kısa kalanlar / Aksiyon gecesi">
+    <label>İçindekiler</label>
+    <div id="cSecim"></div>
+    <button class="btn" onclick="carkKaydet()">ÇARKI KAYDET</button>
+    <button class="btn alt" id="cIptal" style="display:none" onclick="carkIptal()">Düzenlemeyi iptal et</button>
+  </div>
+  <div id="carkListe"></div>
+</div>
+
+<!-- SONUÇ MODALI -->
+<div class="modal" id="mdl">
+  <div class="box">
+    <div style="font-size:13px;color:#8e8ea6">ÇARK SEÇTİ</div>
+    <div class="big" id="mAd"></div>
+    <div style="font-size:13px;color:#8e8ea6" id="mAlt"></div>
+    <div style="margin:16px 0 4px;font-size:15px">Bunu izleyecek misin?</div>
+    <button class="btn" onclick="evet()">EVET, İZLEYECEĞİM</button>
+    <button class="btn alt" onclick="hayir()">HAYIR — geçersiz say</button>
+    <button class="btn alt" onclick="kapat()">Kapat</button>
+  </div>
+</div>
+
+<!-- BÖLÜM DÜŞME MODALI -->
+<div class="modal" id="mdl2">
+  <div class="box">
+    <div class="big" id="m2Ad"></div>
+    <label style="text-align:left">Kaç bölüm izledin?</label>
+    <input id="m2Say" type="number" min="1" value="1">
+    <div style="font-size:12px;color:#8e8ea6;margin-top:6px" id="m2Bilgi"></div>
+    <button class="btn" onclick="dus()">DÜŞ VE KAYDET</button>
+    <button class="btn alt" onclick="document.getElementById('mdl2').classList.remove('on')">Vazgeç</button>
+  </div>
+</div>
+
+<div class="modal" id="mOnay"><div class="box">
+  <div id="onayMsj" style="font-size:17px;font-weight:600;margin-bottom:8px"></div>
+  <button class="btn red" id="onayEvet">EVET</button>
+  <button class="btn alt" onclick="document.getElementById('mOnay').classList.remove('on')">Vazgeç</button>
+</div></div>
+
+<div class="modal" id="mGiris"><div class="box">
+  <div id="girisMsj" style="font-size:15px;font-weight:600"></div>
+  <input id="girisVal" type="number" step="0.5" min="0.1" style="margin-top:10px">
+  <button class="btn" id="girisOk">KAYDET</button>
+  <button class="btn alt" onclick="document.getElementById('mGiris').classList.remove('on')">Vazgeç</button>
+</div></div>
+
+<div id="toast" style="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#ffd166;color:#12121a;padding:11px 18px;border-radius:24px;font-weight:600;font-size:14px;display:none;z-index:40;max-width:90%;text-align:center"></div>
+
+<script>
+const LS='cark_v1';
+let S={items:[],carklar:[],aktif:'all'};
+let gecersiz=new Set(), rot=0, donuyor=false, secilen=null, duzenlenenCark=null;
+const RENK=['#ffd166','#ef8354','#06d6a0','#4cc9f0','#b892ff','#f72585','#8ac926','#ff9f1c','#5390d9','#ff70a6'];
+
+function kaydet(){localStorage.setItem(LS,JSON.stringify(S));}
+function yukle(){try{const d=JSON.parse(localStorage.getItem(LS));if(d){S.items=d.items||[];S.carklar=d.carklar||[];S.aktif=d.aktif||'all';}}catch(e){}}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+function bildir(m){const t=document.getElementById('toast');t.textContent=m;t.style.display='block';clearTimeout(t._z);t._z=setTimeout(()=>t.style.display='none',2400);}
+function onay(m,cb){const d=document.getElementById('mOnay');document.getElementById('onayMsj').textContent=m;document.getElementById('onayEvet').onclick=function(){d.classList.remove('on');cb();};d.classList.add('on');}
+function giris(m,v,cb){const d=document.getElementById('mGiris');document.getElementById('girisMsj').textContent=m;const i=document.getElementById('girisVal');i.value=v;document.getElementById('girisOk').onclick=function(){d.classList.remove('on');cb(i.value);};d.classList.add('on');}
+function tab(i){for(let k=0;k<3;k++){document.getElementById('t'+k).classList.toggle('on',k===i);document.getElementById('p'+k).classList.toggle('on',k===i);}}
+
+/* ---------- ADAYLAR & AĞIRLIK ---------- */
+function aktifSet(){
+  if(S.aktif==='all')return null;
+  const c=S.carklar.find(x=>x.id===S.aktif);
+  return c?new Set(c.ids):null;
+}
+function adaylar(){
+  const set=aktifSet();
+  return S.items.filter(i=>!i.bitti && i.kalan>0 && !gecersiz.has(i.id) && (!set||set.has(i.id)));
+}
+function agirlik(i){return (1/Math.max(1,i.kalan))*(parseFloat(i.carpan)||1);}
+
+/* ---------- ÇİZİM ---------- */
+const cv=document.getElementById('cv'),cx=cv.getContext('2d');
+function boyut(){
+  const w=cv.clientWidth||320,d=window.devicePixelRatio||1;
+  cv.width=w*d;cv.height=w*d;cx.setTransform(d,0,0,d,0,0);
+  return w;
+}
+function ciz(){
+  const w=boyut(),r=w/2-6,c=w/2;
+  cx.clearRect(0,0,w,w);
+  const a=adaylar();
+  cx.save();cx.translate(c,c);cx.rotate(rot-Math.PI/2);
+  if(!a.length){
+    cx.restore();
+    cx.fillStyle='#1a1a26';cx.beginPath();cx.arc(c,c,r,0,7);cx.fill();
+    cx.fillStyle='#8e8ea6';cx.font='14px sans-serif';cx.textAlign='center';
+    cx.fillText('Aday yok',c,c);
+    return;
+  }
+  const top=a.reduce((s,i)=>s+agirlik(i),0);let ac=0;
+  a.forEach((it,k)=>{
+    const ang=agirlik(it)/top*Math.PI*2;
+    cx.beginPath();cx.moveTo(0,0);cx.arc(0,0,r,ac,ac+ang);cx.closePath();
+    cx.fillStyle=RENK[k%RENK.length];cx.fill();
+    cx.strokeStyle='#12121a';cx.lineWidth=2;cx.stroke();
+    if(ang>0.16){
+      cx.save();cx.rotate(ac+ang/2);cx.textAlign='right';cx.fillStyle='#12121a';
+      cx.font='600 '+Math.max(9,Math.min(13,ang*40))+'px sans-serif';
+      let t=it.ad.length>16?it.ad.slice(0,15)+'…':it.ad;
+      cx.fillText(t,r-10,4);cx.restore();
+    }
+    ac+=ang;
+  });
+  cx.restore();
+  cx.beginPath();cx.arc(c,c,20,0,7);cx.fillStyle='#12121a';cx.fill();
+  cx.strokeStyle='#ffd166';cx.lineWidth=3;cx.stroke();
+}
+
+/* ---------- ÇEVİRME ---------- */
+function cevir(){
+  if(donuyor)return;
+  const a=adaylar();
+  if(!a.length){bildir('Çarkta aday yok — geçersizleri sıfırla ya da yapım ekle.');return;}
+  const top=a.reduce((s,i)=>s+agirlik(i),0);
+  let r=Math.random()*top,k=0,ac=0;
+  for(let i=0;i<a.length;i++){if(r<agirlik(a[i])){k=i;break;}r-=agirlik(a[i]);}
+  for(let i=0;i<k;i++)ac+=agirlik(a[i])/top*Math.PI*2;
+  const ang=agirlik(a[k])/top*Math.PI*2;
+  const mid=ac+ang/2+(Math.random()-.5)*ang*0.6;
+  const TAU=Math.PI*2;
+  let base=((-mid)%TAU+TAU)%TAU;
+  let hedef=base+TAU*(Math.ceil((rot-base)/TAU)+6);
+  const bas=rot,fark=hedef-rot,t0=performance.now(),sure=4200;
+  donuyor=true;document.getElementById('spinBtn').disabled=true;
+  (function ad(t){
+    let p=Math.min(1,(t-t0)/sure);p=1-Math.pow(1-p,3);
+    rot=bas+fark*p;ciz();
+    if(p<1)requestAnimationFrame(ad);
+    else{donuyor=false;document.getElementById('spinBtn').disabled=false;sonuc(a[k]);}
+  })(t0);
+}
+function sonuc(it){
+  secilen=it;
+  document.getElementById('mAd').textContent=it.ad;
+  document.getElementById('mAlt').textContent='Kalan '+it.kalan+' bölüm · çarpan x'+(it.carpan||1);
+  document.getElementById('mdl').classList.add('on');
+}
+function kapat(){document.getElementById('mdl').classList.remove('on');}
+function hayir(){
+  const it=S.items.find(x=>x.id===secilen.id);
+  const eski=parseFloat(it.carpan)||1;
+  it.carpan=Math.round(eski*1.25*100)/100;
+  it.kacis=(it.kacis||0)+1;
+  gecersiz.add(it.id);kaydet();kapat();ciz();ciz2();liste();
+  bildir(it.ad+' → çarpan x'+eski+' ⇒ x'+it.carpan);
+  setTimeout(()=>{ if(adaylar().length) cevir(); else bildir('Aday kalmadı — geçersizleri sıfırlayabilirsin.'); },700);
+}
+function evet(){
+  kapat();
+  document.getElementById('m2Ad').textContent=secilen.ad;
+  document.getElementById('m2Say').value=1;
+  document.getElementById('m2Bilgi').textContent='Şu an kalan: '+secilen.kalan+' bölüm';
+  document.getElementById('mdl2').classList.add('on');
+}
+function dus(){
+  const n=Math.max(1,parseInt(document.getElementById('m2Say').value)||1);
+  const it=S.items.find(x=>x.id===secilen.id);
+  it.kalan=Math.max(0,it.kalan-n);
+  if(it.kalan===0){it.bitti=true;setTimeout(()=>bildir('🎉 '+it.ad+' bitti!'),150);}else bildir(it.ad+' → '+it.kalan+' bölüm kaldı');
+  gecersiz.clear();
+  kaydet();document.getElementById('mdl2').classList.remove('on');ciz();ciz2();liste();
+}
+
+/* ---------- ÇARK SAYFASI ALT BİLGİ ---------- */
+function ciz2(){
+  const sel=document.getElementById('carkSec');
+  sel.innerHTML='<option value="all">Tüm yapımlar</option>'+S.carklar.map(c=>'<option value="'+c.id+'">'+esc(c.ad)+'</option>').join('');
+  sel.value=S.aktif;
+  const g=document.getElementById('gecersizKutu');
+  if(gecersiz.size){
+    g.innerHTML='<div class="card"><div style="font-size:12px;color:#8e8ea6">Bu turda geçersiz sayılanlar</div>'+
+      [...gecersiz].map(id=>{const i=S.items.find(x=>x.id===id);return i?'<span class="chip">'+esc(i.ad)+'</span>':''}).join('')+
+      '<button class="btn alt" onclick="gecersiz.clear();ciz();ciz2()">Geçersizleri sıfırla</button></div>';
+  }else g.innerHTML='';
+  const a=adaylar(),top=a.reduce((s,i)=>s+agirlik(i),0);
+  document.getElementById('sans').innerHTML=a.length?a.slice().sort((x,y)=>agirlik(y)-agirlik(x)).map(i=>{
+    const p=agirlik(i)/top*100;
+    return '<div class="row"><div class="nm"><b>'+esc(i.ad)+'</b><span>'+i.kalan+' bölüm kaldı · x'+(i.carpan||1)+' · %'+p.toFixed(1)+'</span><div class="bar"><i style="width:'+p.toFixed(1)+'%"></i></div></div></div>';
+  }).join(''):'<div class="muted">Bu çarkta aday yok.</div>';
+}
+function carkDegis(){S.aktif=document.getElementById('carkSec').value;gecersiz.clear();kaydet();ciz();ciz2();}
+
+/* ---------- YAPIMLAR ---------- */
+function ekle(){
+  const ad=document.getElementById('yAd').value.trim();
+  const b=parseInt(document.getElementById('yBol').value);
+  const c=parseFloat(document.getElementById('yCarp').value)||1;
+  if(!ad||!b||b<1){bildir('Ad ve kalan bölüm gerekli.');return;}
+  S.items.push({id:uid(),ad:ad,kalan:b,carpan:c,bitti:false});
+  document.getElementById('yAd').value='';
+  kaydet();liste();ciz();ciz2();carkSecimCiz();
+}
+function liste(){
+  const akt=S.items.filter(i=>!i.bitti),bit=S.items.filter(i=>i.bitti);
+  document.getElementById('liste').innerHTML=akt.length?akt.map(i=>
+    '<div class="row"><div class="nm"><b>'+esc(i.ad)+'</b><span>'+i.kalan+' bölüm · çarpan x'+(i.carpan||1)+(i.kacis?' · '+i.kacis+' kez kaçıldı':'')+'</span></div>'+
+    '<button class="mini" onclick="bol(\''+i.id+'\',-1)">−</button>'+
+    '<button class="mini" onclick="bol(\''+i.id+'\',1)">+</button>'+
+    '<button class="mini" onclick="carpanDegis(\''+i.id+'\')">x</button>'+
+    '<button class="mini x" onclick="sil(\''+i.id+'\')">🗑</button></div>').join(''):'<div class="muted">Henüz yapım yok.</div>';
+  document.getElementById('bitenler').innerHTML=bit.length?bit.map(i=>
+    '<div class="row"><div class="nm"><b>'+esc(i.ad)+'</b><span>bitti ✓</span></div>'+
+    '<button class="mini" onclick="geriAl(\''+i.id+'\')">↺</button>'+
+    '<button class="mini x" onclick="sil(\''+i.id+'\')">🗑</button></div>').join(''):'<div class="muted">Yok.</div>';
+}
+function bol(id,d){const i=S.items.find(x=>x.id===id);i.kalan=Math.max(0,i.kalan+d);if(i.kalan===0)i.bitti=true;kaydet();liste();ciz();ciz2();}
+function carpanDegis(id){const i=S.items.find(x=>x.id===id);
+  giris(i.ad+' — çarpan (1 = normal, 2 = iki kat şans)',i.carpan||1,function(v){
+    i.carpan=Math.max(0.1,parseFloat(v)||1);kaydet();liste();ciz();ciz2();bildir('Çarpan x'+i.carpan);
+  });}
+function geriAl(id){const i=S.items.find(x=>x.id===id);i.bitti=false;if(i.kalan<1)i.kalan=1;kaydet();liste();ciz();ciz2();}
+function sil(id){const i=S.items.find(x=>x.id===id);
+  onay('"'+i.ad+'" silinsin mi?',function(){
+    S.items=S.items.filter(x=>x.id!==id);S.carklar.forEach(c=>c.ids=c.ids.filter(x=>x!==id));
+    kaydet();liste();ciz();ciz2();carkSecimCiz();bildir('Silindi');
+  });}
+
+/* ---------- ÖZEL ÇARKLAR ---------- */
+function carkSecimCiz(){
+  const akt=S.items.filter(i=>!i.bitti);
+  document.getElementById('cSecim').innerHTML=akt.length?akt.map(i=>
+    '<div class="chkrow"><input type="checkbox" id="ck'+i.id+'" value="'+i.id+'"><label for="ck'+i.id+'">'+esc(i.ad)+' <span style="color:#8e8ea6">('+i.kalan+')</span></label></div>').join(''):'<div class="muted">Önce yapım ekle.</div>';
+}
+function carkKaydet(){
+  const ad=document.getElementById('cAd').value.trim();
+  const ids=[...document.querySelectorAll('#cSecim input:checked')].map(e=>e.value);
+  if(!ad||!ids.length){bildir('Çark adı ve en az bir yapım seç.');return;}
+  if(duzenlenenCark){const c=S.carklar.find(x=>x.id===duzenlenenCark);c.ad=ad;c.ids=ids;duzenlenenCark=null;document.getElementById('cIptal').style.display='none';}
+  else S.carklar.push({id:uid(),ad:ad,ids:ids});
+  document.getElementById('cAd').value='';
+  document.querySelectorAll('#cSecim input').forEach(e=>e.checked=false);
+  kaydet();carkListe();ciz2();
+}
+function carkIptal(){duzenlenenCark=null;document.getElementById('cAd').value='';document.querySelectorAll('#cSecim input').forEach(e=>e.checked=false);document.getElementById('cIptal').style.display='none';}
+function carkListe(){
+  document.getElementById('carkListe').innerHTML=S.carklar.length?S.carklar.map(c=>
+    '<div class="row"><div class="nm"><b>'+esc(c.ad)+'</b><span>'+c.ids.length+' yapım</span></div>'+
+    '<button class="mini" onclick="carkKullan(\''+c.id+'\')">▶</button>'+
+    '<button class="mini" onclick="carkDuzenle(\''+c.id+'\')">✎</button>'+
+    '<button class="mini x" onclick="carkSil(\''+c.id+'\')">🗑</button></div>').join(''):'<div class="muted">Özel çark yok. Çark yoksa tüm yapımlar kullanılır.</div>';
+}
+function carkKullan(id){S.aktif=id;gecersiz.clear();kaydet();ciz2();ciz();tab(0);}
+function carkDuzenle(id){
+  const c=S.carklar.find(x=>x.id===id);duzenlenenCark=id;
+  document.getElementById('cAd').value=c.ad;
+  carkSecimCiz();
+  c.ids.forEach(i=>{const e=document.getElementById('ck'+i);if(e)e.checked=true;});
+  document.getElementById('cIptal').style.display='block';
+  window.scrollTo(0,0);
+}
+function carkSil(id){const c=S.carklar.find(x=>x.id===id);
+  onay('"'+c.ad+'" çarkı silinsin mi?',function(){
+    S.carklar=S.carklar.filter(x=>x.id!==id);if(S.aktif===id)S.aktif='all';
+    kaydet();carkListe();ciz2();ciz();bildir('Çark silindi');
+  });}
+
+/* ---------- YEDEK ---------- */
+function yedekAl(){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(S,null,2)],{type:'application/json'}));
+  a.download='cark-yedek-'+new Date().toISOString().slice(0,10)+'.json';a.click();
+}
+function yedekYukle(inp){
+  const f=inp.files[0];if(!f)return;const r=new FileReader();
+  r.onload=e=>{try{const d=JSON.parse(e.target.result);if(!d.items)throw 0;
+    onay('Mevcut veriler bu yedekle değiştirilsin mi?',function(){
+      S.items=d.items;S.carklar=d.carklar||[];S.aktif=d.aktif||'all';
+      kaydet();liste();carkListe();carkSecimCiz();ciz2();ciz();bildir('Yedek yüklendi.');
+    });
+  }catch(x){bildir('Geçersiz dosya.')}};
+  r.readAsText(f);inp.value='';
+}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+yukle();liste();carkListe();carkSecimCiz();ciz2();ciz();
+window.addEventListener('resize',ciz);
+</script>
+</body>
+</html>
